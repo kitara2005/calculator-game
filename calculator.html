@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thử Thách Toán Học</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+        }
+        .op-btn.active, .range-btn.active {
+            background-color: #0ea5e9; color: white; transform: scale(1.05);
+            box-shadow: 0 4px 14px 0 rgba(0, 118, 255, 0.39);
+        }
+        .calculation-area { font-family: 'Roboto Mono', monospace; font-weight: 700; }
+        
+        .simple-grid {
+            display: grid;
+            grid-template-columns: repeat(var(--grid-cols, 1), 1fr);
+            justify-items: center; align-items: center; gap: 4px;
+        }
+        
+        .grid-item { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;}
+        .problem-digit { font-size: 2rem; color: #1e293b; }
+        .operator-symbol { font-size: 2rem; color: #1e293b; justify-self: start; padding-left: 4px;}
+        .grid-hr { grid-column: 1 / -1; width: 100%; height: 2px; background-color: #1e293b; margin: 0.5rem 0; }
+        .answer-input {
+            width: 100%; min-width: 2.5rem; height: 3.5rem;
+            text-align: center; font-size: 2rem;
+            border-width: 2px; border-radius: 0.5rem;
+        }
+        .correct-digit { border-color: #22c55e; color: #22c55e; background-color: #f0fdf4; }
+        .incorrect-digit { border-color: #ef4444; color: #ef4444; background-color: #fef2f2; }
+
+        @media (max-width: 640px) {
+            .problem-digit, .operator-symbol { font-size: 1.5rem; }
+            .answer-input { height: 3rem; font-size: 1.5rem; min-width: 2rem;}
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-6 sm:p-8 text-center">
+        <h1 class="text-3xl font-bold text-slate-700 mb-2">Thử Thách Toán Học</h1>
+        <p class="text-slate-500 mb-6">Chọn phép tính và độ khó!</p>
+
+        <div class="bg-blue-500 text-white rounded-lg p-3 mb-6">
+            <span class="text-lg">Điểm số:</span>
+            <span id="score" class="text-2xl font-bold">0</span>
+        </div>
+
+        <div id="operator-choice" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            <button data-op="+" class="op-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg text-2xl transition">+</button>
+            <button data-op="-" class="op-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg text-2xl transition">−</button>
+            <button data-op="*" class="op-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg text-2xl transition">×</button>
+            <button data-op="/" class="op-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg text-2xl transition">÷</button>
+        </div>
+
+        <!-- Range Selection Buttons -->
+        <div id="range-choice" class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
+            <button data-range="10" class="range-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 10</button>
+            <button data-range="100" class="range-btn active w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 100</button>
+            <button data-range="1000" class="range-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 1.000</button>
+            <button data-range="10000" class="range-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 10.000</button>
+            <button data-range="100000" class="range-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 100.000</button>
+        </div>
+
+        <div id="calculation-area" class="mb-6 bg-slate-50 p-4 rounded-lg min-h-[150px]"></div>
+        
+        <button id="check-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg text-xl transition transform hover:scale-105">Kiểm Tra</button>
+
+        <div id="feedback" class="mt-6 text-xl sm:text-2xl font-bold h-8"></div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const scoreElement = document.getElementById('score');
+        const calculationArea = document.getElementById('calculation-area');
+        const checkBtn = document.getElementById('check-btn');
+        const feedbackElement = document.getElementById('feedback');
+        const opButtons = document.querySelectorAll('.op-btn');
+        const rangeButtons = document.querySelectorAll('.range-btn');
+
+        // State
+        let currentProblem = {};
+        let score = 0;
+        let currentMaxRange = 100;
+
+        // Utility Functions
+        function getRandomNumber(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+        
+        function requestNewProblem(operator) {
+            opButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.op === operator));
+            generateProblem(operator);
+            feedbackElement.textContent = '';
+            checkBtn.disabled = false;
+        }
+        
+        function createDigitInputs(count, groupName) {
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                html += `<div class="grid-item"><input type="text" maxlength="1" class="answer-input" data-group="${groupName}" /></div>`;
+            }
+            return html;
+        }
+
+        /** --- Problem Generation --- */
+        function generateProblem(operator) {
+            currentProblem = { type: operator };
+            calculationArea.innerHTML = '';
+            calculationArea.className = 'mb-6 bg-slate-50 p-4 rounded-lg min-h-[150px] calculation-area';
+            
+            let num1, num2;
+            const max = currentMaxRange;
+            const min = max > 10 ? Math.floor(max / 10) : 1;
+
+            switch(operator) {
+                case '+':
+                    num1 = getRandomNumber(min, max); num2 = getRandomNumber(min, max);
+                    currentProblem.answer = num1 + num2;
+                    setupSimpleGridProblem(num1, num2, '+');
+                    break;
+                case '-':
+                    num1 = getRandomNumber(min, max); num2 = getRandomNumber(min, num1);
+                    currentProblem.answer = num1 - num2;
+                    setupSimpleGridProblem(num1, num2, '−');
+                    break;
+                case '*':
+                    let factorMax;
+                    if (max <= 10) { factorMax = 9; }
+                    else if (max <= 100) { factorMax = 10; }
+                    else if (max <= 1000) { factorMax = 35; }
+                    else if (max <= 10000) { factorMax = 100; }
+                    else { factorMax = 300; }
+                    
+                    num1 = getRandomNumber(2, factorMax);
+                    num2 = getRandomNumber(2, Math.min(factorMax, 99)); // Keep second number 2 digits max for UI
+                    currentProblem.answer = num1 * num2;
+                    currentProblem.partialProducts = num2.toString().split('').reverse().map(digit => num1 * parseInt(digit));
+                    setupSimpleGridProblem(num1, num2, '×');
+                    break;
+                case '/':
+                    let divisorMax;
+                    if (max <= 10) { divisorMax = 9; }
+                    else if (max <= 100) { divisorMax = 10; }
+                    else if (max <= 1000) { divisorMax = 30; }
+                    else if (max <= 10000) { divisorMax = 99; }
+                    else { divisorMax = 500; }
+
+                    num1 = getRandomNumber(min, max); 
+                    num2 = getRandomNumber(2, divisorMax);
+                    currentProblem.quotient = Math.floor(num1 / num2);
+                    currentProblem.remainder = num1 % num2;
+                    setupDivisionProblem(num1, num2);
+                    break;
+            }
+        }
+        
+        function setupSimpleGridProblem(num1, num2, op) {
+            calculationArea.classList.add('simple-grid');
+            const num1Str = num1.toString(), num2Str = num2.toString(), answerStr = (currentProblem.answer || '').toString();
+            let maxLength = Math.max(num1Str.length, num2Str.length);
+            if (op === '×') {
+                 const longestPartial = currentProblem.partialProducts.reduce((max, p) => Math.max(max, p.toString().length), 0);
+                 maxLength = Math.max(maxLength, answerStr.length, longestPartial + (currentProblem.partialProducts.length - 1));
+            } else {
+                 maxLength = Math.max(maxLength, answerStr.length);
+            }
+            
+            calculationArea.style.setProperty('--grid-cols', maxLength + 1);
+
+            let content = '';
+            content += `<div class="grid-item"></div> ${'<div class="grid-item"></div>'.repeat(maxLength - num1Str.length)} ${num1Str.split('').map(d => `<div class="grid-item problem-digit">${d}</div>`).join('')}`;
+            content += `<div class="grid-item operator-symbol">${op}</div> ${'<div class="grid-item"></div>'.repeat(maxLength - num2Str.length)} ${num2Str.split('').map(d => `<div class="grid-item problem-digit">${d}</div>`).join('')}`;
+            content += '<div class="grid-hr"></div>';
+            
+            if (op === '×') {
+                currentProblem.partialProducts.forEach((p, index) => {
+                    const pStr = p.toString();
+                    content += '<div class="grid-item"></div>';
+                    content += `${'<div class="grid-item"></div>'.repeat(maxLength - pStr.length - index)}`;
+                    content += createDigitInputs(pStr.length, `partial_${index}`);
+                    content += `${'<div class="grid-item"></div>'.repeat(index)}`;
+                });
+                content += '<div class="grid-hr"></div>';
+            }
+
+            content += `${'<div class="grid-item"></div>'.repeat(maxLength + 1 - answerStr.length)}`;
+            content += createDigitInputs(answerStr.length, 'answer');
+            calculationArea.innerHTML = content;
+        }
+
+        function setupDivisionProblem(dividend, divisor) {
+            calculationArea.classList.add('flex', 'items-center', 'justify-center');
+            calculationArea.innerHTML = `
+                <div class="flex flex-wrap items-center justify-center gap-4 text-3xl font-bold">
+                    <span class="problem-digit">${dividend.toLocaleString('vi-VN')}</span>
+                    <span class="problem-digit">÷</span>
+                    <span class="problem-digit">${divisor.toLocaleString('vi-VN')}</span>
+                    <span class="problem-digit">=</span>
+                    <input type="text" class="answer-input w-32" data-group="quotient" placeholder="Thương">
+                    <span class="problem-digit text-2xl">dư</span>
+                    <input type="text" class="answer-input w-24" data-group="remainder" placeholder="Số dư">
+                </div>
+            `;
+        }
+
+        /** --- Checking Logic --- */
+        function checkAnswer() {
+            let allCorrect = true;
+            
+            const checkGroupAsNumber = (groupName, correctValue) => {
+                const inputs = document.querySelectorAll(`input[data-group="${groupName}"]`);
+                if (inputs.length === 0) return;
+                const input = inputs[0];
+                const userValue = parseInt(input.value, 10);
+                
+                input.classList.remove('correct-digit', 'incorrect-digit');
+                if (isNaN(userValue) || userValue !== correctValue) {
+                    allCorrect = false;
+                    input.classList.add('incorrect-digit');
+                } else {
+                    input.classList.add('correct-digit');
+                }
+            };
+
+            const checkGroupAsDigits = (groupName, correctValue) => {
+                const inputs = document.querySelectorAll(`input[data-group="${groupName}"]`);
+                if (inputs.length === 0) return;
+                const correctStr = correctValue.toString();
+
+                if (inputs.length !== correctStr.length) {
+                    inputs.forEach(input => input.classList.add('incorrect-digit'));
+                    allCorrect = false; return;
+                }
+
+                for (let i = 0; i < inputs.length; i++) {
+                    const input = inputs[i];
+                    const correctDigit = correctStr[i];
+                    input.classList.remove('correct-digit', 'incorrect-digit');
+                    if (input.value === correctDigit) {
+                        input.classList.add('correct-digit');
+                    } else {
+                        input.classList.add('incorrect-digit');
+                        allCorrect = false;
+                    }
+                }
+            };
+
+            switch(currentProblem.type) {
+                case '*':
+                    currentProblem.partialProducts.forEach((p, i) => checkGroupAsDigits(`partial_${i}`, p));
+                    checkGroupAsDigits('answer', currentProblem.answer);
+                    break;
+                case '/':
+                    checkGroupAsNumber('quotient', currentProblem.quotient);
+                    checkGroupAsNumber('remainder', currentProblem.remainder);
+                    break;
+                default:
+                    checkGroupAsDigits('answer', currentProblem.answer);
+                    break;
+            }
+
+            feedbackElement.classList.remove('text-green-500', 'text-red-500');
+            if (allCorrect) {
+                score++;
+                scoreElement.textContent = score;
+                feedbackElement.textContent = 'Chính xác! Quá giỏi!';
+                feedbackElement.classList.add('text-green-500');
+                checkBtn.disabled = true;
+            } else {
+                feedbackElement.textContent = 'Vẫn còn lỗi sai, kiểm tra lại nhé!';
+                feedbackElement.classList.add('text-red-500');
+            }
+        }
+        
+        /** --- Event Listeners --- */
+        calculationArea.addEventListener('input', (e) => {
+            if (e.target.tagName === 'INPUT') {
+                const inputs = Array.from(calculationArea.querySelectorAll('input'));
+                const currentIndex = inputs.indexOf(e.target);
+                if (e.target.maxLength === 1 && e.target.value.match(/^[0-9]$/) && currentIndex < inputs.length - 1) {
+                    inputs[currentIndex + 1].focus();
+                }
+            }
+        });
+
+        opButtons.forEach(button => button.addEventListener('click', (e) => requestNewProblem(e.target.dataset.op)));
+        
+        rangeButtons.forEach(button => {
+            button.addEventListener('click', e => {
+                currentMaxRange = parseInt(e.target.dataset.range, 10);
+                rangeButtons.forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                const activeOpButton = document.querySelector('.op-btn.active');
+                if (activeOpButton) {
+                    requestNewProblem(activeOpButton.dataset.op);
+                } else { // If no op is selected, select '+' by default
+                    requestNewProblem('+');
+                }
+            });
+        });
+
+        checkBtn.addEventListener('click', checkAnswer);
+
+        // Initial load
+        window.onload = () => {
+            document.querySelector('.op-btn[data-op="+"]').classList.add('active');
+            requestNewProblem('+');
+        };
+    </script>
+</body>
+</html>
