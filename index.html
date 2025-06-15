@@ -20,16 +20,38 @@
             display: grid;
             grid-template-columns: repeat(var(--grid-cols, 1), 1fr);
             justify-items: center; align-items: center; gap: 4px;
+            padding: 1rem;
         }
         
-        .grid-item { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;}
+        .grid-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-width: 2.5rem;
+            height: 100%;
+            position: relative;
+        }
         .problem-digit { font-size: 2rem; color: #1e293b; }
         .operator-symbol { font-size: 2rem; color: #1e293b; justify-self: start; padding-left: 4px;}
         .grid-hr { grid-column: 1 / -1; width: 100%; height: 2px; background-color: #1e293b; margin: 0.5rem 0; }
         .answer-input {
-            width: 100%; min-width: 2.5rem; height: 3.5rem;
-            text-align: center; font-size: 2rem;
-            border-width: 2px; border-radius: 0.5rem;
+            width: 100%;
+            min-width: 2.5rem;
+            height: 3.5rem;
+            text-align: center;
+            font-size: 2rem;
+            border-width: 2px;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            margin: 0.25rem;
+            background-color: white;
+            transition: all 0.2s ease;
+        }
+        .answer-input:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
         }
         .correct-digit { border-color: #22c55e; color: #22c55e; background-color: #f0fdf4; }
         .incorrect-digit { border-color: #ef4444; color: #ef4444; background-color: #fef2f2; }
@@ -66,6 +88,7 @@
 
         @media (max-width: 640px) {
             .problem-digit, .operator-symbol { font-size: 1.5rem; }
+            .answer-input { min-width: 2rem; height: 3rem; font-size: 1.5rem; padding: 0.25rem; margin: 0.125rem; }
             .answer-input { height: 3rem; font-size: 1.5rem; min-width: 2rem;}
             .division-dividend, .division-divisor { font-size: 1.5rem; }
         }
@@ -161,7 +184,7 @@
             easy: {
                 '+': { min: 1, max: 50, maxDigits: 2 },
                 '-': { min: 1, max: 50, maxDigits: 2 },
-                '*': { min: 1, max: 10, maxDigits: 2 },
+                '*': { min: 1, max: 10, maxDigits: 2, maxMultiplierDigits: 2 },
                 '/': { 
                     min: 1, 
                     max: 50, 
@@ -174,7 +197,7 @@
             medium: {
                 '+': { min: 1000, max: 100000, maxDigits: 6 },
                 '-': { min: 1000, max: 100000, maxDigits: 6 },
-                '*': { min: 10, max: 100, maxDigits: 3 },
+                '*': { min: 10, max: 100, maxDigits: 3, maxMultiplierDigits: 3 },
                 '/': { 
                     min: 20, 
                     max: 500, 
@@ -187,7 +210,7 @@
             hard: {
                 '+': { min: 10000, max: 10000000, maxDigits: 8 },
                 '-': { min: 10000, max: 10000000, maxDigits: 8 },
-                '*': { min: 100, max: 1000, maxDigits: 4 },
+                '*': { min: 100, max: 1000, maxDigits: 4, maxMultiplierDigits: 3 },
                 '/': { 
                     min: 100, 
                     max: 10000, 
@@ -213,7 +236,7 @@
         function createDigitInputs(count, groupName) {
             let html = '';
             for (let i = 0; i < count; i++) {
-                html += `<div class="grid-item"><input type="text" maxlength="1" class="answer-input" data-group="${groupName}" /></div>`;
+                html += `<div class="grid-item"><input type="text" maxlength="1" class="answer-input" data-group="${groupName}" data-index="${i}" /></div>`;
             }
             return html;
         }
@@ -293,7 +316,9 @@
                         break;
                     case '*':
                         num1 = getRandomNumberInRange(settings.min, settings.max, settings.maxDigits);
-                        num2 = getRandomNumberInRange(settings.min, Math.min(settings.max, 99), settings.maxDigits);
+                        // Generate multiplier with appropriate number of digits
+                        const maxMultiplier = Math.min(settings.max, Math.pow(10, settings.maxMultiplierDigits) - 1);
+                        num2 = getRandomNumberInRange(settings.min, maxMultiplier, settings.maxMultiplierDigits);
                         if (isNaN(num1) || isNaN(num2)) throw new Error('Invalid numbers generated for multiplication');
                         currentProblem.answer = num1 * num2;
                         currentProblem.partialProducts = num2.toString().split('').reverse().map(digit => num1 * parseInt(digit));
@@ -382,35 +407,251 @@
         function setupSimpleGridProblem(num1, num2, op) {
             calculationArea.classList.add('simple-grid');
             const num1Str = num1.toString(), num2Str = num2.toString(), answerStr = (currentProblem.answer || '').toString();
-            let maxLength = Math.max(num1Str.length, num2Str.length);
-            if (op === '×') {
-                 const longestPartial = currentProblem.partialProducts.reduce((max, p) => Math.max(max, p.toString().length), 0);
-                 maxLength = Math.max(maxLength, answerStr.length, longestPartial + (currentProblem.partialProducts.length - 1));
-            } else {
-                 maxLength = Math.max(maxLength, answerStr.length);
-            }
-            
-            calculationArea.style.setProperty('--grid-cols', maxLength + 1);
-
             let content = '';
-            content += `<div class="grid-item"></div> ${'<div class="grid-item"></div>'.repeat(maxLength - num1Str.length)} ${num1Str.split('').map(d => `<div class="grid-item problem-digit">${d}</div>`).join('')}`;
-            content += `<div class="grid-item operator-symbol">${op}</div> ${'<div class="grid-item"></div>'.repeat(maxLength - num2Str.length)} ${num2Str.split('').map(d => `<div class="grid-item problem-digit">${d}</div>`).join('')}`;
-            content += '<div class="grid-hr"></div>';
             
             if (op === '×') {
-                currentProblem.partialProducts.forEach((p, index) => {
-                    const pStr = p.toString();
-                    content += '<div class="grid-item"></div>';
-                    content += `${'<div class="grid-item"></div>'.repeat(maxLength - pStr.length - index)}`;
-                    content += createDigitInputs(pStr.length, `partial_${index}`);
-                    content += `${'<div class="grid-item"></div>'.repeat(index)}`;
+                // Calculate partial products
+                const num2Digits = num2Str.split('').reverse();
+                currentProblem.partialProducts = [];
+                
+                num2Digits.forEach((digit, index) => {
+                    const partialProduct = num1 * parseInt(digit);
+                    currentProblem.partialProducts.push(partialProduct);
                 });
-                content += '<div class="grid-hr"></div>';
-            }
 
-            content += `${'<div class="grid-item"></div>'.repeat(maxLength + 1 - answerStr.length)}`;
-            content += createDigitInputs(answerStr.length, 'answer');
+                // Calculate total length needed for display
+                const longestPartial = currentProblem.partialProducts.reduce((max, p) => Math.max(max, p.toString().length), 0);
+                const maxLength = Math.max(
+                    num1Str.length,
+                    num2Str.length,
+                    answerStr.length,
+                    longestPartial + num2Str.length - 1
+                );
+                
+                // Set grid columns to accommodate the widest number plus operator column
+                calculationArea.style.setProperty('--grid-cols', maxLength + 1);
+
+                // First row: First number
+                content += `<div class="grid-item"></div>`; // Operator column
+                content += `${'<div class="grid-item"></div>'.repeat(maxLength - num1Str.length)}`; // Leading spaces
+                content += num1Str.split('').map(d => `<div class="grid-item problem-digit">${d}</div>`).join('');
+                
+                // Second row: Operator and second number
+                content += `<div class="grid-item operator-symbol">${op}</div>`;
+                content += `${'<div class="grid-item"></div>'.repeat(maxLength - num2Str.length)}`; // Leading spaces
+                content += num2Str.split('').map(d => `<div class="grid-item problem-digit">${d}</div>`).join('');
+                
+                // Horizontal line
+                content += '<div class="grid-hr"></div>';
+                
+                // Add partial products with proper alignment
+                currentProblem.partialProducts.forEach((product, index) => {
+                    const pStr = product.toString();
+                    const indent = index;
+                    
+                    // Calculate proper spacing for this step
+                    const leadingSpaces = maxLength - (pStr.length + indent);
+                    
+                    // Add leading spaces (including operator column)
+                    content += `<div class="grid-item"></div>`; // Operator column
+                    content += `${'<div class="grid-item"></div>'.repeat(leadingSpaces)}`; // Leading spaces
+                    
+                    // Add input boxes for partial product
+                    content += createDigitInputs(pStr.length, `partial_${index}`);
+                    
+                    // Add trailing spaces
+                    content += `${'<div class="grid-item"></div>'.repeat(indent)}`;
+                    
+                    // Add horizontal line after each step except the last one
+                    if (index < currentProblem.partialProducts.length - 1) {
+                        content += '<div class="grid-hr"></div>';
+                    }
+                });
+                
+                // Add final horizontal line
+                content += '<div class="grid-hr"></div>';
+                
+                // Add final answer input with proper alignment
+                const answerSpaces = maxLength - answerStr.length;
+                content += `<div class="grid-item"></div>`; // Operator column
+                content += `${'<div class="grid-item"></div>'.repeat(answerSpaces)}`; // Leading spaces
+                content += createDigitInputs(answerStr.length, 'answer');
+            } else {
+                // For other operations
+                const maxLength = Math.max(num1Str.length, num2Str.length, answerStr.length);
+                calculationArea.style.setProperty('--grid-cols', maxLength + 1);
+                
+                // First row: First number
+                content += `<div class="grid-item"></div>`;
+                content += `${'<div class="grid-item"></div>'.repeat(maxLength - num1Str.length)}`;
+                content += num1Str.split('').map(d => `<div class="grid-item problem-digit">${d}</div>`).join('');
+                
+                // Second row: Operator and second number
+                content += `<div class="grid-item operator-symbol">${op}</div>`;
+                content += `${'<div class="grid-item"></div>'.repeat(maxLength - num2Str.length)}`;
+                content += num2Str.split('').map(d => `<div class="grid-item problem-digit">${d}</div>`).join('');
+                
+                // Horizontal line
+                content += '<div class="grid-hr"></div>';
+                
+                // Add answer input
+                content += `${'<div class="grid-item"></div>'.repeat(maxLength + 1 - answerStr.length)}`;
+                content += createDigitInputs(answerStr.length, 'answer');
+            }
+            
             calculationArea.innerHTML = content;
+            
+            // Add event listeners for immediate validation and focus handling
+            if (op === '×') {
+                const inputs = calculationArea.querySelectorAll('input[data-group^="partial_"]');
+                inputs.forEach(input => {
+                    // Prevent focus loss on click
+                    input.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        input.focus();
+                    });
+
+                    input.addEventListener('input', (e) => {
+                        const [_, stepIndex] = e.target.dataset.group.split('_');
+                        const stepProduct = currentProblem.partialProducts[stepIndex];
+                        const userAnswer = e.target.value;
+                        const currentIndex = parseInt(e.target.dataset.index);
+                        
+                        // Only allow numbers
+                        e.target.value = userAnswer.replace(/[^0-9]/g, '');
+                        
+                        // Move to next input if current input is filled
+                        if (e.target.value.length === 1) {
+                            const nextInput = e.target.closest('.grid-item').nextElementSibling?.querySelector('input');
+                            if (nextInput) {
+                                nextInput.focus();
+                            }
+                        }
+                        
+                        // Validate when input is complete
+                        const stepInputs = calculationArea.querySelectorAll(`input[data-group="partial_${stepIndex}"]`);
+                        const completeAnswer = Array.from(stepInputs).map(input => input.value).join('');
+                        
+                        if (completeAnswer.length === stepProduct.toString().length) {
+                            const isCorrect = parseInt(completeAnswer) === stepProduct;
+                            stepInputs.forEach(input => {
+                                input.classList.toggle('correct-digit', isCorrect);
+                                input.classList.toggle('incorrect-digit', !isCorrect);
+                                if (isCorrect) {
+                                    input.readOnly = true;
+                                    setTimeout(() => input.classList.remove('correct-digit'), 1000);
+                                }
+                            });
+                            
+                            if (!isCorrect) {
+                                setTimeout(() => {
+                                    stepInputs.forEach(input => {
+                                        input.classList.remove('incorrect-digit');
+                                        if (!input.readOnly) {
+                                            input.value = '';
+                                        }
+                                    });
+                                    stepInputs[0].focus();
+                                }, 1000);
+                            }
+                        }
+                    });
+
+                    // Handle backspace to move to previous input
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Backspace' && e.target.value === '') {
+                            const prevInput = e.target.closest('.grid-item').previousElementSibling?.querySelector('input');
+                            if (prevInput) {
+                                prevInput.focus();
+                            }
+                        }
+                    });
+                });
+            }
+        }
+
+        function validateMultiplicationStep(stepIndex, userAnswer) {
+            const step = currentProblem.partialSteps[stepIndex];
+            if (!step) return false;
+            
+            const userValue = parseInt(userAnswer) || 0;
+            const isCorrect = userValue === step.product;
+            
+            console.log('Validating multiplication step:', {
+                stepIndex,
+                step,
+                userAnswer,
+                isCorrect,
+                explanation: step.explanation
+            });
+            
+            return isCorrect;
+        }
+
+        // Update the check button logic to handle multiplication steps
+        function checkAllSteps() {
+            if (currentProblem.type === '×') {
+                let allCorrect = true;
+                const inputs = calculationArea.querySelectorAll('input');
+                
+                // Check all partial products
+                currentProblem.partialProducts.forEach((product, index) => {
+                    const stepInputs = calculationArea.querySelectorAll(`input[data-group="partial_${index}"]`);
+                    const userAnswer = Array.from(stepInputs).map(input => input.value).join('');
+                    
+                    if (parseInt(userAnswer) !== product) {
+                        allCorrect = false;
+                        stepInputs.forEach(input => {
+                            input.classList.add('incorrect-digit');
+                            setTimeout(() => {
+                                input.classList.remove('incorrect-digit');
+                                if (!input.readOnly) {
+                                    input.value = '';
+                                }
+                            }, 1000);
+                        });
+                    }
+                });
+                
+                // Check final answer
+                const answerInputs = calculationArea.querySelectorAll('input[data-group="answer"]');
+                const userAnswer = Array.from(answerInputs).map(input => input.value).join('');
+                const correctAnswer = currentProblem.answer.toString();
+                
+                if (userAnswer !== correctAnswer) {
+                    allCorrect = false;
+                    answerInputs.forEach(input => {
+                        input.classList.add('incorrect-digit');
+                        setTimeout(() => {
+                            input.classList.remove('incorrect-digit');
+                            if (!input.readOnly) {
+                                input.value = '';
+                            }
+                        }, 1000);
+                    });
+                }
+                
+                return allCorrect;
+            } else {
+                // For other operations (addition, subtraction)
+                const answerInputs = calculationArea.querySelectorAll('input[data-group="answer"]');
+                const userAnswer = Array.from(answerInputs).map(input => input.value).join('');
+                const correctAnswer = currentProblem.answer.toString();
+                
+                if (userAnswer !== correctAnswer) {
+                    answerInputs.forEach(input => {
+                        input.classList.add('incorrect-digit');
+                        setTimeout(() => {
+                            input.classList.remove('incorrect-digit');
+                            if (!input.readOnly) {
+                                input.value = '';
+                            }
+                        }, 1000);
+                    });
+                    return false;
+                }
+                return true;
+            }
         }
 
         function setupDivisionProblem(dividend, divisor) {
@@ -616,147 +857,6 @@
             });
             
             return steps;
-        }
-
-        /** --- Checking Logic --- */
-        function checkAllSteps() {
-            if (!currentProblem.steps) return false;
-            
-            let allCorrect = true;
-            const stepInputs = calculationArea.querySelectorAll('input[data-step]');
-            
-            // Reset all input styles
-            stepInputs.forEach(input => {
-                input.classList.remove('correct-digit', 'incorrect-digit');
-            });
-            
-            // Check each step
-            for (let i = 0; i < currentProblem.steps.length; i++) {
-                const step = currentProblem.steps[i];
-                const stepInputs = calculationArea.querySelectorAll(`input[data-step^="${i}"]`);
-                
-                // Check if all inputs for this step are filled
-                const allFilled = Array.from(stepInputs).every(input => input.value !== '');
-                if (!allFilled) {
-                    allCorrect = false;
-                    stepInputs.forEach(input => {
-                        if (input.value === '') {
-                            input.classList.add('incorrect-digit');
-                        }
-                    });
-                    continue;
-                }
-                
-                // Validate the step
-                const isStepCorrect = validateDivisionStep(i);
-                if (!isStepCorrect) {
-                    allCorrect = false;
-                    stepInputs.forEach(input => {
-                        input.classList.add('incorrect-digit');
-                    });
-                } else {
-                    stepInputs.forEach(input => {
-                        input.classList.add('correct-digit');
-                    });
-                }
-            }
-            
-            // Check final answer if all steps are correct
-            if (allCorrect) {
-                const quotientInput = calculationArea.querySelector('input[data-group="quotient"]');
-                const remainderInput = calculationArea.querySelector('input[data-group="remainder"]');
-                
-                if (quotientInput && remainderInput) {
-                    const userQuotient = parseInt(quotientInput.value) || 0;
-                    const userRemainder = parseInt(remainderInput.value) || 0;
-                    
-                    if (userQuotient !== currentProblem.quotient || userRemainder !== currentProblem.remainder) {
-                        allCorrect = false;
-                        quotientInput.classList.add('incorrect-digit');
-                        remainderInput.classList.add('incorrect-digit');
-                    } else {
-                        quotientInput.classList.add('correct-digit');
-                        remainderInput.classList.add('correct-digit');
-                    }
-                }
-            }
-            
-            return allCorrect;
-        }
-
-        function validateDivisionStep(stepIndex) {
-            const step = currentProblem.steps[stepIndex];
-            const userAnswer = currentProblem.userAnswers[stepIndex];
-            
-            if (!userAnswer || !step) {
-                console.log('Missing step or user answer:', { stepIndex, step, userAnswer });
-                return false;
-            }
-            
-            // Convert all values to numbers for comparison
-            const userTimes = parseInt(userAnswer.times) || 0;
-            const userMultiply = parseInt(userAnswer.multiply) || 0;
-            const userRemainder = parseInt(userAnswer.remainder) || 0;
-            
-            // Calculate expected values for verification
-            const expectedMultiply = userTimes * currentProblem.divisor;
-            const expectedRemainder = step.currentNumber - expectedMultiply;
-            
-            // Debug log with detailed information
-            console.log('Step validation details:', {
-                stepIndex,
-                currentNumber: step.currentNumber,
-                divisor: currentProblem.divisor,
-                calculation: `${step.currentNumber} - ${expectedMultiply} = ${expectedRemainder}`,
-                expected: {
-                    times: step.times,
-                    multiply: expectedMultiply,
-                    remainder: expectedRemainder
-                },
-                actual: {
-                    times: userTimes,
-                    multiply: userMultiply,
-                    remainder: userRemainder
-                }
-            });
-            
-            // Validate times (quotient digit)
-            if (userTimes !== step.times) {
-                console.log('Times mismatch:', {
-                    expected: step.times,
-                    actual: userTimes,
-                    currentNumber: step.currentNumber,
-                    divisor: currentProblem.divisor,
-                    calculation: `${step.currentNumber} ÷ ${currentProblem.divisor} = ${step.times}`
-                });
-                return false;
-            }
-            
-            // Validate multiply
-            if (userMultiply !== expectedMultiply) {
-                console.log('Multiply mismatch:', {
-                    expected: expectedMultiply,
-                    actual: userMultiply,
-                    times: userTimes,
-                    divisor: currentProblem.divisor,
-                    calculation: `${userTimes} × ${currentProblem.divisor} = ${expectedMultiply}`
-                });
-                return false;
-            }
-            
-            // Validate remainder
-            if (userRemainder !== expectedRemainder) {
-                console.log('Remainder mismatch:', {
-                    expected: expectedRemainder,
-                    actual: userRemainder,
-                    currentNumber: step.currentNumber,
-                    multiply: expectedMultiply,
-                    calculation: `${step.currentNumber} - ${expectedMultiply} = ${expectedRemainder}`
-                });
-                return false;
-            }
-            
-            return true;
         }
 
         /** --- Event Listeners --- */
