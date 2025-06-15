@@ -34,10 +34,65 @@
         .correct-digit { border-color: #22c55e; color: #22c55e; background-color: #f0fdf4; }
         .incorrect-digit { border-color: #ef4444; color: #ef4444; background-color: #fef2f2; }
 
+        /* Division layout styles */
+        .division-setup {
+            position: relative;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .division-dividend {
+            font-size: 2rem;
+            color: #1e293b;
+            padding-right: 1rem;
+        }
+        .division-divisor {
+            position: relative;
+            padding-left: 0.5rem;
+            border-left: 2px solid #94a3b8;
+            border-bottom: 2px solid #94a3b8;
+            padding-bottom: 0.25rem;
+        }
+        .division-divisor::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background-color: #94a3b8;
+        }
+
         @media (max-width: 640px) {
             .problem-digit, .operator-symbol { font-size: 1.5rem; }
             .answer-input { height: 3rem; font-size: 1.5rem; min-width: 2rem;}
+            .division-dividend, .division-divisor { font-size: 1.5rem; }
         }
+
+        /* Add new styles for difficulty buttons */
+        .difficulty-btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .difficulty-btn::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        .difficulty-btn.easy::after { background-color: #22c55e; }
+        .difficulty-btn.medium::after { background-color: #eab308; }
+        .difficulty-btn.hard::after { background-color: #ef4444; }
+        .difficulty-btn.active::after { transform: scaleX(1); }
+        .difficulty-btn.active.easy { background-color: #dcfce7; color: #166534; }
+        .difficulty-btn.active.medium { background-color: #fef9c3; color: #854d0e; }
+        .difficulty-btn.active.hard { background-color: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
@@ -58,18 +113,28 @@
             <button data-op="/" class="op-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg text-2xl transition">÷</button>
         </div>
 
-        <!-- Range Selection Buttons -->
-        <div id="range-choice" class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
-            <button data-range="10" class="range-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 10</button>
-            <button data-range="100" class="range-btn active w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 100</button>
-            <button data-range="1000" class="range-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 1.000</button>
-            <button data-range="10000" class="range-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 10.000</button>
-            <button data-range="100000" class="range-btn w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-sm sm:text-base transition">Tới 100.000</button>
+        <!-- Replace Range Selection Buttons with Difficulty Buttons -->
+        <div id="difficulty-choice" class="grid grid-cols-3 gap-4 mb-6">
+            <button data-difficulty="easy" class="difficulty-btn easy w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg text-lg transition">
+                <div class="font-bold mb-1">Dễ</div>
+                <div class="text-sm text-slate-600">Số nhỏ, phép tính đơn giản</div>
+            </button>
+            <button data-difficulty="medium" class="difficulty-btn medium w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg text-lg transition">
+                <div class="font-bold mb-1">Trung bình</div>
+                <div class="text-sm text-slate-600">Số vừa, có nhớ</div>
+            </button>
+            <button data-difficulty="hard" class="difficulty-btn hard w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg text-lg transition">
+                <div class="font-bold mb-1">Khó</div>
+                <div class="text-sm text-slate-600">Số lớn, nhiều bước tính</div>
+            </button>
         </div>
 
         <div id="calculation-area" class="mb-6 bg-slate-50 p-4 rounded-lg min-h-[150px]"></div>
         
-        <button id="check-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg text-xl transition transform hover:scale-105">Kiểm Tra</button>
+        <div class="flex gap-4">
+            <button id="check-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg text-xl transition transform hover:scale-105">Kiểm Tra</button>
+            <button id="check-again-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-lg text-xl transition transform hover:scale-105">Kiểm tra lại</button>
+        </div>
 
         <div id="feedback" class="mt-6 text-xl sm:text-2xl font-bold h-8"></div>
     </div>
@@ -79,19 +144,66 @@
         const scoreElement = document.getElementById('score');
         const calculationArea = document.getElementById('calculation-area');
         const checkBtn = document.getElementById('check-btn');
+        const checkAgainBtn = document.getElementById('check-again-btn');
         const feedbackElement = document.getElementById('feedback');
         const opButtons = document.querySelectorAll('.op-btn');
-        const rangeButtons = document.querySelectorAll('.range-btn');
+        const difficultyButtons = document.querySelectorAll('.difficulty-btn');
 
         // State
         let currentProblem = {};
         let score = 0;
-        let currentMaxRange = 100;
+        let currentDifficulty = 'medium'; // Default difficulty
+        let retryCount = 0; // Add retry counter
+        const MAX_RETRIES = 3; // Maximum number of retries
+
+        // Difficulty settings with proper operator mapping
+        const difficultySettings = {
+            easy: {
+                '+': { min: 1, max: 50, maxDigits: 2 },
+                '-': { min: 1, max: 50, maxDigits: 2 },
+                '*': { min: 1, max: 10, maxDigits: 2 },
+                '/': { 
+                    min: 1, 
+                    max: 50, 
+                    maxDivisor: 10, 
+                    maxQuotient: 10,
+                    maxDigits: 2,
+                    divisorDigits: 1
+                }
+            },
+            medium: {
+                '+': { min: 10, max: 200, maxDigits: 3 },
+                '-': { min: 10, max: 200, maxDigits: 3 },
+                '*': { min: 2, max: 20, maxDigits: 2 },
+                '/': { 
+                    min: 20, 
+                    max: 500, 
+                    maxDivisor: 20, 
+                    maxQuotient: 25,
+                    maxDigits: 3,
+                    divisorDigits: 2
+                }
+            },
+            hard: {
+                '+': { min: 100, max: 1000, maxDigits: 4 },
+                '-': { min: 100, max: 1000, maxDigits: 4 },
+                '*': { min: 10, max: 50, maxDigits: 2 },
+                '/': { 
+                    min: 100, 
+                    max: 10000, 
+                    maxDivisor: 50, 
+                    maxQuotient: 200,
+                    maxDigits: 4,
+                    divisorDigits: 2
+                }
+            }
+        };
 
         // Utility Functions
         function getRandomNumber(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
         
         function requestNewProblem(operator) {
+            retryCount = 0; // Reset retry counter
             opButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.op === operator));
             generateProblem(operator);
             feedbackElement.textContent = '';
@@ -107,54 +219,163 @@
         }
 
         /** --- Problem Generation --- */
+        function getRandomNumberInRange(min, max, maxDigits) {
+            // Ensure all parameters are valid numbers
+            min = Number(min);
+            max = Number(max);
+            maxDigits = Number(maxDigits);
+
+            // Validate parameters
+            if (isNaN(min) || isNaN(max) || isNaN(maxDigits)) {
+                console.error('Invalid parameters for getRandomNumberInRange:', { min, max, maxDigits });
+                return NaN;
+            }
+
+            // Ensure min and max are valid numbers and within bounds
+            min = Math.max(1, Math.floor(min));
+            max = Math.max(min, Math.floor(max));
+            
+            // Calculate maximum possible value based on digits
+            const maxValue = Math.min(max, Math.pow(10, maxDigits) - 1);
+            
+            // Ensure we have a valid range
+            if (min > maxValue) {
+                console.error('Invalid range in getRandomNumberInRange:', { min, max, maxValue, maxDigits });
+                return NaN;
+            }
+
+            const result = Math.floor(Math.random() * (maxValue - min + 1)) + min;
+            console.log('getRandomNumberInRange result:', { min, max, maxDigits, maxValue, result });
+            return result;
+        }
+
         function generateProblem(operator) {
+            if (retryCount >= MAX_RETRIES) {
+                console.error('Max retries reached, falling back to addition');
+                operator = '+';
+                retryCount = 0;
+            }
+
             currentProblem = { type: operator };
             calculationArea.innerHTML = '';
             calculationArea.className = 'mb-6 bg-slate-50 p-4 rounded-lg min-h-[150px] calculation-area';
             
+            // Get settings for current difficulty and operator
+            const settings = difficultySettings[currentDifficulty][operator];
+            if (!settings) {
+                console.error('Invalid operator or difficulty settings:', { operator, currentDifficulty });
+                return;
+            }
+
+            console.log('Current settings:', {
+                difficulty: currentDifficulty,
+                operator,
+                settings
+            });
+
             let num1, num2;
-            const max = currentMaxRange;
-            const min = max > 10 ? Math.floor(max / 10) : 1;
 
-            switch(operator) {
-                case '+':
-                    num1 = getRandomNumber(min, max); num2 = getRandomNumber(min, max);
-                    currentProblem.answer = num1 + num2;
-                    setupSimpleGridProblem(num1, num2, '+');
-                    break;
-                case '-':
-                    num1 = getRandomNumber(min, max); num2 = getRandomNumber(min, num1);
-                    currentProblem.answer = num1 - num2;
-                    setupSimpleGridProblem(num1, num2, '−');
-                    break;
-                case '*':
-                    let factorMax;
-                    if (max <= 10) { factorMax = 9; }
-                    else if (max <= 100) { factorMax = 10; }
-                    else if (max <= 1000) { factorMax = 35; }
-                    else if (max <= 10000) { factorMax = 100; }
-                    else { factorMax = 300; }
-                    
-                    num1 = getRandomNumber(2, factorMax);
-                    num2 = getRandomNumber(2, Math.min(factorMax, 99)); // Keep second number 2 digits max for UI
-                    currentProblem.answer = num1 * num2;
-                    currentProblem.partialProducts = num2.toString().split('').reverse().map(digit => num1 * parseInt(digit));
-                    setupSimpleGridProblem(num1, num2, '×');
-                    break;
-                case '/':
-                    let divisorMax;
-                    if (max <= 10) { divisorMax = 9; }
-                    else if (max <= 100) { divisorMax = 10; }
-                    else if (max <= 1000) { divisorMax = 30; }
-                    else if (max <= 10000) { divisorMax = 99; }
-                    else { divisorMax = 500; }
+            try {
+                switch(operator) {
+                    case '+':
+                        num1 = getRandomNumberInRange(settings.min, settings.max, settings.maxDigits);
+                        num2 = getRandomNumberInRange(settings.min, settings.max, settings.maxDigits);
+                        if (isNaN(num1) || isNaN(num2)) throw new Error('Invalid numbers generated for addition');
+                        currentProblem.answer = num1 + num2;
+                        setupSimpleGridProblem(num1, num2, '+');
+                        break;
+                    case '-':
+                        num1 = getRandomNumberInRange(settings.min, settings.max, settings.maxDigits);
+                        num2 = getRandomNumberInRange(settings.min, num1, settings.maxDigits);
+                        if (isNaN(num1) || isNaN(num2)) throw new Error('Invalid numbers generated for subtraction');
+                        currentProblem.answer = num1 - num2;
+                        setupSimpleGridProblem(num1, num2, '−');
+                        break;
+                    case '*':
+                        num1 = getRandomNumberInRange(settings.min, settings.max, settings.maxDigits);
+                        num2 = getRandomNumberInRange(settings.min, Math.min(settings.max, 99), settings.maxDigits);
+                        if (isNaN(num1) || isNaN(num2)) throw new Error('Invalid numbers generated for multiplication');
+                        currentProblem.answer = num1 * num2;
+                        currentProblem.partialProducts = num2.toString().split('').reverse().map(digit => num1 * parseInt(digit));
+                        setupSimpleGridProblem(num1, num2, '×');
+                        break;
+                    case '/':
+                        // For division, generate numbers in a more controlled way
+                        if (currentDifficulty === 'easy') {
+                            // Easy: Single digit divisor, clean division
+                            num2 = getRandomNumberInRange(2, Math.min(settings.maxDivisor, 9), settings.divisorDigits);
+                            if (isNaN(num2)) throw new Error('Invalid divisor generated for easy division');
+                            
+                            const multiplier = getRandomNumberInRange(1, Math.min(settings.maxQuotient, 10), settings.maxDigits);
+                            if (isNaN(multiplier)) throw new Error('Invalid multiplier generated for easy division');
+                            
+                            num1 = num2 * multiplier;
+                        } else {
+                            // Medium and Hard: Generate divisor first, then dividend
+                            num2 = getRandomNumberInRange(2, settings.maxDivisor, settings.divisorDigits);
+                            if (isNaN(num2)) throw new Error('Invalid divisor generated for division');
+                            
+                            // Calculate maximum possible quotient
+                            const maxQuotient = Math.min(
+                                settings.maxQuotient,
+                                Math.floor(settings.max / num2),
+                                Math.pow(10, settings.maxDigits) - 1
+                            );
+                            
+                            if (maxQuotient < 1) {
+                                throw new Error('Invalid maxQuotient calculated for division');
+                            }
+                            
+                            const multiplier = getRandomNumberInRange(1, maxQuotient, settings.maxDigits);
+                            if (isNaN(multiplier)) throw new Error('Invalid multiplier generated for division');
+                            
+                            num1 = num2 * multiplier;
+                            
+                            // For medium and hard, sometimes add a remainder
+                            if (currentDifficulty !== 'easy' && Math.random() < 0.5) {
+                                const remainder = getRandomNumberInRange(1, num2 - 1, settings.maxDigits);
+                                if (!isNaN(remainder)) {
+                                    num1 += remainder;
+                                }
+                            }
+                        }
 
-                    num1 = getRandomNumber(min, max); 
-                    num2 = getRandomNumber(2, divisorMax);
-                    currentProblem.quotient = Math.floor(num1 / num2);
-                    currentProblem.remainder = num1 % num2;
-                    setupDivisionProblem(num1, num2);
-                    break;
+                        console.log('Generating division problem:', {
+                            difficulty: currentDifficulty,
+                            settings,
+                            num1,
+                            num2,
+                            quotient: Math.floor(num1 / num2),
+                            remainder: num1 % num2,
+                            retryCount,
+                            maxQuotient: settings.maxQuotient,
+                            maxDivisor: settings.maxDivisor,
+                            maxDigits: settings.maxDigits,
+                            divisorDigits: settings.divisorDigits
+                        });
+
+                        if (isNaN(num1) || isNaN(num2) || num2 === 0 || num1 < num2) {
+                            throw new Error('Invalid numbers generated for division');
+                        }
+
+                        currentProblem.quotient = Math.floor(num1 / num2);
+                        currentProblem.remainder = num1 % num2;
+                        setupDivisionProblem(num1, num2);
+                        break;
+                    default:
+                        throw new Error('Invalid operator: ' + operator);
+                }
+            } catch (error) {
+                console.error('Error generating problem:', error, { 
+                    retryCount,
+                    difficulty: currentDifficulty,
+                    operator,
+                    settings
+                });
+                retryCount++;
+                // Retry with the same operator
+                setTimeout(() => generateProblem(operator), 0);
+                return;
             }
         }
         
@@ -193,78 +414,483 @@
         }
 
         function setupDivisionProblem(dividend, divisor) {
-            calculationArea.classList.add('flex', 'items-center', 'justify-center');
-            calculationArea.innerHTML = `
-                <div class="flex flex-wrap items-center justify-center gap-4 text-3xl font-bold">
-                    <span class="problem-digit">${dividend.toLocaleString('vi-VN')}</span>
-                    <span class="problem-digit">÷</span>
-                    <span class="problem-digit">${divisor.toLocaleString('vi-VN')}</span>
-                    <span class="problem-digit">=</span>
-                    <input type="text" class="answer-input w-32" data-group="quotient" placeholder="Thương">
-                    <span class="problem-digit text-2xl">dư</span>
-                    <input type="text" class="answer-input w-24" data-group="remainder" placeholder="Số dư">
+            calculationArea.classList.remove('simple-grid');
+            calculationArea.classList.add('flex', 'flex-col', 'items-center', 'justify-center', 'gap-2');
+            
+            // Store initial values
+            currentProblem.dividend = dividend;
+            currentProblem.divisor = divisor;
+            currentProblem.currentStep = 0;
+            currentProblem.userAnswers = [];
+            currentProblem.quotient = Math.floor(dividend / divisor);
+            currentProblem.remainder = dividend % divisor;
+            currentProblem.stepsContainer = null; // Add reference to steps container
+            
+            // Calculate initial steps
+            const steps = calculateDivisionSteps(dividend, divisor);
+            currentProblem.steps = steps;
+            
+            let content = '';
+            // Display the division setup with dividend on left and divisor on right
+            content += `
+                <div class="division-setup">
+                    <div class="division-dividend">${dividend}</div>
+                    <div class="division-divisor">
+                        <div class="problem-digit">${divisor}</div>
+                    </div>
+                </div>
+                <div id="division-steps" class="w-full"></div>
+            `;
+
+            calculationArea.innerHTML = content;
+            
+            // Store reference to steps container
+            currentProblem.stepsContainer = document.getElementById('division-steps');
+            
+            // Show first step
+            showDivisionStep(0, true);
+
+            // Focus the first input
+            const firstInput = currentProblem.stepsContainer.querySelector('input');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }
+
+        function showDivisionStep(stepIndex, isActive) {
+            if (!currentProblem.stepsContainer || !currentProblem.steps[stepIndex]) return;
+            
+            const step = currentProblem.steps[stepIndex];
+            const stepElement = document.createElement('div');
+            stepElement.className = `division-step ${stepIndex > 0 ? 'mt-2' : ''}`;
+            stepElement.dataset.stepIndex = stepIndex;
+            
+            // Calculate max length for remainder input based on the number
+            const remainderLength = step.remainder.toString().length;
+            const maxLength = Math.max(remainderLength, 2); // At least 2 digits, or more if needed
+            
+            const stepContent = `
+                <div class="flex flex-col items-center gap-1">
+                    ${stepIndex === 0 ? '' : 
+                        `<div class="text-slate-400">${'&nbsp;'.repeat(step.indent)}${step.currentNumber}</div>`
+                    }
+                    <div class="flex items-center gap-2">
+                        ${'&nbsp;'.repeat(step.indent)}
+                        ${isActive ? 
+                            `<input type="text" class="answer-input w-12 text-center" data-step="${stepIndex}_times" maxlength="1" placeholder="?" pattern="[0-9]*" inputmode="numeric">` :
+                            `<span class="text-slate-400">${step.times}</span>`
+                        }
+                        <span class="text-slate-400">× ${currentProblem.divisor} =</span>
+                        ${isActive ? 
+                            `<input type="text" class="answer-input w-16 text-center" data-step="${stepIndex}_multiply" maxlength="3" placeholder="?" pattern="[0-9]*" inputmode="numeric">` :
+                            `<span class="text-slate-400">${step.multiply}</span>`
+                        }
+                    </div>
+                    <div class="grid-hr w-32"></div>
+                    <div class="flex items-center gap-2">
+                        ${'&nbsp;'.repeat(step.indent)}
+                        ${isActive ? 
+                            `<input type="text" class="answer-input w-${maxLength * 8 + 16}px text-center" data-step="${stepIndex}_remainder" maxlength="${maxLength}" placeholder="?" pattern="[0-9]*" inputmode="numeric">` :
+                            `<span>${step.remainder}</span>`
+                        }
+                    </div>
                 </div>
             `;
+            
+            stepElement.innerHTML = stepContent;
+            currentProblem.stepsContainer.appendChild(stepElement);
+
+            // Add input event listeners for immediate validation
+            if (isActive) {
+                const inputs = stepElement.querySelectorAll('input');
+                inputs.forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        // Only allow numbers
+                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                        
+                        // Update user's answer
+                        if (!currentProblem.userAnswers[stepIndex]) {
+                            currentProblem.userAnswers[stepIndex] = {};
+                        }
+                        const [_, type] = e.target.dataset.step.split('_');
+                        currentProblem.userAnswers[stepIndex][type] = e.target.value;
+                        
+                        console.log('Input updated:', {
+                            stepIndex,
+                            type,
+                            value: e.target.value,
+                            currentStep: step,
+                            userAnswers: currentProblem.userAnswers[stepIndex]
+                        });
+                    });
+                });
+            }
+        }
+
+        function calculateDivisionSteps(dividend, divisor) {
+            if (isNaN(dividend) || isNaN(divisor) || divisor === 0) {
+                console.error('Invalid division parameters:', { dividend, divisor });
+                return [];
+            }
+
+            const steps = [];
+            const dividendStr = dividend.toString();
+            let currentNumber = '';
+            let currentQuotient = '';
+            let indent = 0;
+            
+            console.log('Starting division calculation:', { 
+                dividend, 
+                divisor,
+                dividendStr,
+                difficulty: currentDifficulty
+            });
+            
+            for (let i = 0; i < dividendStr.length; i++) {
+                currentNumber += dividendStr[i];
+                let num = parseInt(currentNumber);
+                
+                if (isNaN(num)) {
+                    console.error('Invalid number in division step:', { currentNumber, digit: dividendStr[i] });
+                    continue;
+                }
+                
+                console.log('Processing digit:', {
+                    digit: dividendStr[i],
+                    currentNumber: num,
+                    divisor: divisor,
+                    step: i + 1
+                });
+                
+                if (num >= divisor) {
+                    const times = Math.floor(num / divisor);
+                    const multiply = times * divisor;
+                    const remainder = num - multiply;
+                    
+                    console.log('Calculating step:', {
+                        step: steps.length + 1,
+                        currentNumber: num,
+                        divisor: divisor,
+                        times: times,
+                        multiply: multiply,
+                        remainder: remainder,
+                        calculation: `${num} - ${multiply} = ${remainder}`
+                    });
+                    
+                    steps.push({
+                        stepNumber: steps.length + 1,
+                        currentNumber: num,
+                        times: times,
+                        multiply: multiply,
+                        remainder: remainder,
+                        indent: indent,
+                        quotientDigit: times
+                    });
+                    
+                    currentNumber = remainder.toString();
+                    currentQuotient += times;
+                    indent++;
+                } else if (i === dividendStr.length - 1) {
+                    console.log('Final step:', {
+                        currentNumber: num,
+                        remainder: num,
+                        step: steps.length + 1
+                    });
+                    
+                    steps.push({
+                        stepNumber: steps.length + 1,
+                        currentNumber: num,
+                        times: 0,
+                        multiply: 0,
+                        remainder: num,
+                        indent: indent,
+                        quotientDigit: 0
+                    });
+                }
+            }
+            
+            console.log('Division steps calculated:', {
+                steps,
+                finalQuotient: currentQuotient,
+                finalRemainder: currentNumber
+            });
+            
+            return steps;
         }
 
         /** --- Checking Logic --- */
-        function checkAnswer() {
-            let allCorrect = true;
+        function checkAllSteps() {
+            if (!currentProblem.steps) return false;
             
-            const checkGroupAsNumber = (groupName, correctValue) => {
-                const inputs = document.querySelectorAll(`input[data-group="${groupName}"]`);
-                if (inputs.length === 0) return;
-                const input = inputs[0];
-                const userValue = parseInt(input.value, 10);
-                
+            let allCorrect = true;
+            const stepInputs = calculationArea.querySelectorAll('input[data-step]');
+            
+            // Reset all input styles
+            stepInputs.forEach(input => {
                 input.classList.remove('correct-digit', 'incorrect-digit');
-                if (isNaN(userValue) || userValue !== correctValue) {
+            });
+            
+            // Check each step
+            for (let i = 0; i < currentProblem.steps.length; i++) {
+                const step = currentProblem.steps[i];
+                const stepInputs = calculationArea.querySelectorAll(`input[data-step^="${i}"]`);
+                
+                // Check if all inputs for this step are filled
+                const allFilled = Array.from(stepInputs).every(input => input.value !== '');
+                if (!allFilled) {
                     allCorrect = false;
-                    input.classList.add('incorrect-digit');
-                } else {
-                    input.classList.add('correct-digit');
+                    stepInputs.forEach(input => {
+                        if (input.value === '') {
+                            input.classList.add('incorrect-digit');
+                        }
+                    });
+                    continue;
                 }
-            };
-
-            const checkGroupAsDigits = (groupName, correctValue) => {
-                const inputs = document.querySelectorAll(`input[data-group="${groupName}"]`);
-                if (inputs.length === 0) return;
-                const correctStr = correctValue.toString();
-
-                if (inputs.length !== correctStr.length) {
-                    inputs.forEach(input => input.classList.add('incorrect-digit'));
-                    allCorrect = false; return;
-                }
-
-                for (let i = 0; i < inputs.length; i++) {
-                    const input = inputs[i];
-                    const correctDigit = correctStr[i];
-                    input.classList.remove('correct-digit', 'incorrect-digit');
-                    if (input.value === correctDigit) {
-                        input.classList.add('correct-digit');
-                    } else {
+                
+                // Validate the step
+                const isStepCorrect = validateDivisionStep(i);
+                if (!isStepCorrect) {
+                    allCorrect = false;
+                    stepInputs.forEach(input => {
                         input.classList.add('incorrect-digit');
+                    });
+                } else {
+                    stepInputs.forEach(input => {
+                        input.classList.add('correct-digit');
+                    });
+                }
+            }
+            
+            // Check final answer if all steps are correct
+            if (allCorrect) {
+                const quotientInput = calculationArea.querySelector('input[data-group="quotient"]');
+                const remainderInput = calculationArea.querySelector('input[data-group="remainder"]');
+                
+                if (quotientInput && remainderInput) {
+                    const userQuotient = parseInt(quotientInput.value) || 0;
+                    const userRemainder = parseInt(remainderInput.value) || 0;
+                    
+                    if (userQuotient !== currentProblem.quotient || userRemainder !== currentProblem.remainder) {
                         allCorrect = false;
+                        quotientInput.classList.add('incorrect-digit');
+                        remainderInput.classList.add('incorrect-digit');
+                    } else {
+                        quotientInput.classList.add('correct-digit');
+                        remainderInput.classList.add('correct-digit');
                     }
                 }
-            };
-
-            switch(currentProblem.type) {
-                case '*':
-                    currentProblem.partialProducts.forEach((p, i) => checkGroupAsDigits(`partial_${i}`, p));
-                    checkGroupAsDigits('answer', currentProblem.answer);
-                    break;
-                case '/':
-                    checkGroupAsNumber('quotient', currentProblem.quotient);
-                    checkGroupAsNumber('remainder', currentProblem.remainder);
-                    break;
-                default:
-                    checkGroupAsDigits('answer', currentProblem.answer);
-                    break;
             }
+            
+            return allCorrect;
+        }
 
+        function validateDivisionStep(stepIndex) {
+            const step = currentProblem.steps[stepIndex];
+            const userAnswer = currentProblem.userAnswers[stepIndex];
+            
+            if (!userAnswer || !step) {
+                console.log('Missing step or user answer:', { stepIndex, step, userAnswer });
+                return false;
+            }
+            
+            // Convert all values to numbers for comparison
+            const userTimes = parseInt(userAnswer.times) || 0;
+            const userMultiply = parseInt(userAnswer.multiply) || 0;
+            const userRemainder = parseInt(userAnswer.remainder) || 0;
+            
+            // Calculate expected values for verification
+            const expectedMultiply = userTimes * currentProblem.divisor;
+            const expectedRemainder = step.currentNumber - expectedMultiply;
+            
+            // Debug log with detailed information
+            console.log('Step validation details:', {
+                stepIndex,
+                currentNumber: step.currentNumber,
+                divisor: currentProblem.divisor,
+                calculation: `${step.currentNumber} - ${expectedMultiply} = ${expectedRemainder}`,
+                expected: {
+                    times: step.times,
+                    multiply: expectedMultiply,
+                    remainder: expectedRemainder
+                },
+                actual: {
+                    times: userTimes,
+                    multiply: userMultiply,
+                    remainder: userRemainder
+                }
+            });
+            
+            // Validate times (quotient digit)
+            if (userTimes !== step.times) {
+                console.log('Times mismatch:', {
+                    expected: step.times,
+                    actual: userTimes,
+                    currentNumber: step.currentNumber,
+                    divisor: currentProblem.divisor,
+                    calculation: `${step.currentNumber} ÷ ${currentProblem.divisor} = ${step.times}`
+                });
+                return false;
+            }
+            
+            // Validate multiply
+            if (userMultiply !== expectedMultiply) {
+                console.log('Multiply mismatch:', {
+                    expected: expectedMultiply,
+                    actual: userMultiply,
+                    times: userTimes,
+                    divisor: currentProblem.divisor,
+                    calculation: `${userTimes} × ${currentProblem.divisor} = ${expectedMultiply}`
+                });
+                return false;
+            }
+            
+            // Validate remainder
+            if (userRemainder !== expectedRemainder) {
+                console.log('Remainder mismatch:', {
+                    expected: expectedRemainder,
+                    actual: userRemainder,
+                    currentNumber: step.currentNumber,
+                    multiply: expectedMultiply,
+                    calculation: `${step.currentNumber} - ${expectedMultiply} = ${expectedRemainder}`
+                });
+                return false;
+            }
+            
+            return true;
+        }
+
+        /** --- Event Listeners --- */
+        calculationArea.addEventListener('input', (e) => {
+            if (e.target.tagName === 'INPUT' && e.target.dataset.step) {
+                const [stepIndex, type] = e.target.dataset.step.split('_');
+                const currentStep = currentProblem.steps[stepIndex];
+                
+                if (!currentStep) {
+                    console.log('No step found for index:', stepIndex);
+                    return;
+                }
+
+                // Only allow numbers
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                
+                // Store user's answer as string
+                if (!currentProblem.userAnswers[stepIndex]) {
+                    currentProblem.userAnswers[stepIndex] = {};
+                }
+                currentProblem.userAnswers[stepIndex][type] = e.target.value;
+
+                // Check if all inputs for this step are filled
+                const stepElement = currentProblem.stepsContainer.querySelector(`[data-step-index="${stepIndex}"]`);
+                if (!stepElement) return;
+                
+                const stepInputs = stepElement.querySelectorAll('input');
+                const allFilled = Array.from(stepInputs).every(input => input.value !== '');
+                
+                if (allFilled) {
+                    console.log('All inputs filled for step:', stepIndex);
+                    // Validate the step
+                    const isCorrect = validateDivisionStep(stepIndex);
+                    console.log('Step validation result:', isCorrect);
+                    
+                    if (isCorrect) {
+                        // Show correct state
+                        stepInputs.forEach(input => {
+                            input.classList.add('correct-digit');
+                            input.readOnly = true; // Make inputs readonly after correct
+                            setTimeout(() => input.classList.remove('correct-digit'), 1000);
+                        });
+
+                        // Move to next step if available
+                        if (stepIndex < currentProblem.steps.length - 1) {
+                            // Remove any existing next steps
+                            const nextSteps = currentProblem.stepsContainer.querySelectorAll(`[data-step-index="${parseInt(stepIndex) + 1}"]`);
+                            nextSteps.forEach(step => step.remove());
+                            
+                            // Show next step
+                            showDivisionStep(parseInt(stepIndex) + 1, true);
+                            
+                            // Focus the first input of the next step
+                            const nextInput = currentProblem.stepsContainer.querySelector(`input[data-step="${parseInt(stepIndex) + 1}_times"]`);
+                            if (nextInput) {
+                                nextInput.focus();
+                            }
+                        } else {
+                            // All steps completed, show final answer input
+                            const finalAnswerContent = `
+                                <div class="flex items-center justify-center gap-4 mt-4 text-2xl">
+                                    <span class="problem-digit">=</span>
+                                    <input type="text" class="answer-input w-32" data-group="quotient" placeholder="Thương" pattern="[0-9]*" inputmode="numeric">
+                                    <span class="problem-digit text-xl">dư</span>
+                                    <input type="text" class="answer-input w-24" data-group="remainder" placeholder="Số dư" pattern="[0-9]*" inputmode="numeric">
+                                </div>
+                            `;
+                            const finalContainer = document.createElement('div');
+                            finalContainer.innerHTML = finalAnswerContent;
+                            currentProblem.stepsContainer.appendChild(finalContainer.firstElementChild);
+                            
+                            // Focus the quotient input
+                            const quotientInput = currentProblem.stepsContainer.querySelector('input[data-group="quotient"]');
+                            if (quotientInput) {
+                                quotientInput.focus();
+                            }
+                        }
+                    } else {
+                        // Show error state
+                        stepInputs.forEach(input => {
+                            input.classList.add('incorrect-digit');
+                            setTimeout(() => {
+                                input.classList.remove('incorrect-digit');
+                                if (!input.readOnly) { // Only clear if not readonly
+                                    input.value = '';
+                                }
+                            }, 1000);
+                        });
+                    }
+                }
+            }
+        });
+
+        opButtons.forEach(button => button.addEventListener('click', (e) => requestNewProblem(e.target.dataset.op)));
+        
+        difficultyButtons.forEach(button => {
+            button.addEventListener('click', e => {
+                const difficulty = e.target.closest('.difficulty-btn').dataset.difficulty;
+                if (!difficulty || !difficultySettings[difficulty]) {
+                    console.error('Invalid difficulty:', difficulty);
+                    return;
+                }
+                currentDifficulty = difficulty;
+                difficultyButtons.forEach(btn => btn.classList.remove('active'));
+                e.target.closest('.difficulty-btn').classList.add('active');
+                const activeOpButton = document.querySelector('.op-btn.active');
+                if (activeOpButton) {
+                    requestNewProblem(activeOpButton.dataset.op);
+                } else {
+                    requestNewProblem('+');
+                }
+            });
+        });
+
+        // Add event listener for check again button
+        checkAgainBtn.addEventListener('click', () => {
+            const isAllCorrect = checkAllSteps();
+            
             feedbackElement.classList.remove('text-green-500', 'text-red-500');
-            if (allCorrect) {
+            if (isAllCorrect) {
+                feedbackElement.textContent = 'Tất cả các bước đều chính xác!';
+                feedbackElement.classList.add('text-green-500');
+            } else {
+                feedbackElement.textContent = 'Có lỗi trong các bước tính, hãy kiểm tra lại!';
+                feedbackElement.classList.add('text-red-500');
+            }
+        });
+
+        // Update the existing check button to also use checkAllSteps
+        checkBtn.addEventListener('click', () => {
+            const isAllCorrect = checkAllSteps();
+            
+            feedbackElement.classList.remove('text-green-500', 'text-red-500');
+            if (isAllCorrect) {
                 score++;
                 scoreElement.textContent = score;
                 feedbackElement.textContent = 'Chính xác! Quá giỏi!';
@@ -274,41 +900,22 @@
                 feedbackElement.textContent = 'Vẫn còn lỗi sai, kiểm tra lại nhé!';
                 feedbackElement.classList.add('text-red-500');
             }
-        }
-        
-        /** --- Event Listeners --- */
-        calculationArea.addEventListener('input', (e) => {
-            if (e.target.tagName === 'INPUT') {
-                const inputs = Array.from(calculationArea.querySelectorAll('input'));
-                const currentIndex = inputs.indexOf(e.target);
-                if (e.target.maxLength === 1 && e.target.value.match(/^[0-9]$/) && currentIndex < inputs.length - 1) {
-                    inputs[currentIndex + 1].focus();
-                }
-            }
         });
-
-        opButtons.forEach(button => button.addEventListener('click', (e) => requestNewProblem(e.target.dataset.op)));
-        
-        rangeButtons.forEach(button => {
-            button.addEventListener('click', e => {
-                currentMaxRange = parseInt(e.target.dataset.range, 10);
-                rangeButtons.forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                const activeOpButton = document.querySelector('.op-btn.active');
-                if (activeOpButton) {
-                    requestNewProblem(activeOpButton.dataset.op);
-                } else { // If no op is selected, select '+' by default
-                    requestNewProblem('+');
-                }
-            });
-        });
-
-        checkBtn.addEventListener('click', checkAnswer);
 
         // Initial load
         window.onload = () => {
-            document.querySelector('.op-btn[data-op="+"]').classList.add('active');
-            requestNewProblem('+');
+            const defaultOp = '+';
+            const defaultDifficulty = 'medium';
+            
+            // Validate default settings
+            if (!difficultySettings[defaultDifficulty] || !difficultySettings[defaultDifficulty][defaultOp]) {
+                console.error('Invalid default settings:', { defaultDifficulty, defaultOp });
+                return;
+            }
+
+            document.querySelector(`.op-btn[data-op="${defaultOp}"]`).classList.add('active');
+            document.querySelector(`.difficulty-btn[data-difficulty="${defaultDifficulty}"]`).classList.add('active');
+            requestNewProblem(defaultOp);
         };
     </script>
 </body>
