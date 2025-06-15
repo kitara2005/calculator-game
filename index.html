@@ -588,7 +588,35 @@
             return isCorrect;
         }
 
-        // Update the check button logic to handle multiplication steps
+        function validateDivisionStep(stepIndex) {
+            const step = currentProblem.steps[stepIndex];
+            const userAnswers = currentProblem.userAnswers[stepIndex];
+            
+            if (!step || !userAnswers) return false;
+            
+            // Get the expected values from data attributes
+            const stepElement = currentProblem.stepsContainer.querySelector(`[data-step-index="${stepIndex}"]`);
+            if (!stepElement) return false;
+            
+            const timesInput = stepElement.querySelector(`input[data-step="${stepIndex}_times"]`);
+            const multiplyInput = stepElement.querySelector(`input[data-step="${stepIndex}_multiply"]`);
+            const remainderInput = stepElement.querySelector(`input[data-step="${stepIndex}_remainder"]`);
+            
+            if (!timesInput || !multiplyInput || !remainderInput) return false;
+            
+            const expectedTimes = parseInt(timesInput.dataset.expected);
+            const expectedMultiply = parseInt(multiplyInput.dataset.expected);
+            const expectedRemainder = parseInt(remainderInput.dataset.expected);
+            
+            const userTimes = parseInt(userAnswers.times) || 0;
+            const userMultiply = parseInt(userAnswers.multiply) || 0;
+            const userRemainder = parseInt(userAnswers.remainder) || 0;
+            
+            return userTimes === expectedTimes && 
+                   userMultiply === expectedMultiply && 
+                   userRemainder === expectedRemainder;
+        }
+
         function checkAllSteps() {
             if (currentProblem.type === '×') {
                 let allCorrect = true;
@@ -632,6 +660,43 @@
                 }
                 
                 return allCorrect;
+            } else if (currentProblem.type === '/') {
+                // Check if all steps are completed and correct
+                let allStepsCorrect = true;
+                
+                // Check each division step
+                for (let i = 0; i < currentProblem.steps.length; i++) {
+                    if (!validateDivisionStep(i)) {
+                        allStepsCorrect = false;
+                        break;
+                    }
+                }
+                
+                // Check final quotient and remainder if all steps are correct
+                if (allStepsCorrect) {
+                    const quotientInput = calculationArea.querySelector('input[data-group="quotient"]');
+                    const remainderInput = calculationArea.querySelector('input[data-group="remainder"]');
+                    
+                    if (quotientInput && remainderInput) {
+                        const userQuotient = parseInt(quotientInput.value) || 0;
+                        const userRemainder = parseInt(remainderInput.value) || 0;
+                        
+                        if (userQuotient !== currentProblem.quotient || userRemainder !== currentProblem.remainder) {
+                            allStepsCorrect = false;
+                            [quotientInput, remainderInput].forEach(input => {
+                                input.classList.add('incorrect-digit');
+                                setTimeout(() => {
+                                    input.classList.remove('incorrect-digit');
+                                    if (!input.readOnly) {
+                                        input.value = '';
+                                    }
+                                }, 1000);
+                            });
+                        }
+                    }
+                }
+                
+                return allStepsCorrect;
             } else {
                 // For other operations (addition, subtraction)
                 const answerInputs = calculationArea.querySelectorAll('input[data-group="answer"]');
@@ -703,36 +768,66 @@
             
             const step = currentProblem.steps[stepIndex];
             const stepElement = document.createElement('div');
-            stepElement.className = `division-step ${stepIndex > 0 ? 'mt-2' : ''}`;
+            stepElement.className = `division-step ${stepIndex > 0 ? 'mt-4' : ''}`;
             stepElement.dataset.stepIndex = stepIndex;
             
-            // Calculate max length for remainder input based on the number
-            const remainderLength = step.remainder.toString().length;
-            const maxLength = Math.max(remainderLength, 2); // At least 2 digits, or more if needed
+            // Calculate actual lengths of numbers
+            const timesLength = String(Math.abs(step.times)).length;
+            const multiplyLength = String(Math.abs(step.multiply)).length;
+            const remainderLength = String(Math.abs(step.remainder)).length;
+            
+            // Calculate widths for input fields (minimum 4 digits)
+            const minWidth = 4;
+            const digitWidth = 12;
+            const padding = 24;
+            const timesWidth = Math.max(timesLength, minWidth) * digitWidth + padding;
+            const multiplyWidth = Math.max(multiplyLength, minWidth) * digitWidth + padding;
+            const remainderWidth = Math.max(remainderLength, minWidth) * digitWidth + padding;
             
             const stepContent = `
-                <div class="flex flex-col items-center gap-1">
+                <div class="flex flex-col items-center gap-2">
                     ${stepIndex === 0 ? '' : 
-                        `<div class="text-slate-400">${'&nbsp;'.repeat(step.indent)}${step.currentNumber}</div>`
+                        `<div class="text-slate-400 text-lg">${'&nbsp;'.repeat(step.indent)}${step.currentNumber}</div>`
                     }
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-3">
                         ${'&nbsp;'.repeat(step.indent)}
                         ${isActive ? 
-                            `<input type="text" class="answer-input w-12 text-center" data-step="${stepIndex}_times" maxlength="1" placeholder="?" pattern="[0-9]*" inputmode="numeric">` :
-                            `<span class="text-slate-400">${step.times}</span>`
+                            `<input type="text" 
+                                class="answer-input text-center text-xl" 
+                                style="width: ${timesWidth}px; height: 3rem;" 
+                                data-step="${stepIndex}_times" 
+                                data-expected="${step.times}"
+                                placeholder="?" 
+                                pattern="[0-9]*" 
+                                inputmode="numeric">` :
+                            `<span class="text-slate-400 text-lg">${step.times}</span>`
                         }
-                        <span class="text-slate-400">× ${currentProblem.divisor} =</span>
+                        <span class="text-slate-400 text-lg">× ${currentProblem.divisor} =</span>
                         ${isActive ? 
-                            `<input type="text" class="answer-input w-16 text-center" data-step="${stepIndex}_multiply" maxlength="3" placeholder="?" pattern="[0-9]*" inputmode="numeric">` :
-                            `<span class="text-slate-400">${step.multiply}</span>`
+                            `<input type="text" 
+                                class="answer-input text-center text-xl" 
+                                style="width: ${multiplyWidth}px; height: 3rem;" 
+                                data-step="${stepIndex}_multiply" 
+                                data-expected="${step.multiply}"
+                                placeholder="?" 
+                                pattern="[0-9]*" 
+                                inputmode="numeric">` :
+                            `<span class="text-slate-400 text-lg">${step.multiply}</span>`
                         }
                     </div>
-                    <div class="grid-hr w-32"></div>
-                    <div class="flex items-center gap-2">
+                    <div class="grid-hr w-40"></div>
+                    <div class="flex items-center gap-3">
                         ${'&nbsp;'.repeat(step.indent)}
                         ${isActive ? 
-                            `<input type="text" class="answer-input w-${maxLength * 8 + 16}px text-center" data-step="${stepIndex}_remainder" maxlength="${maxLength}" placeholder="?" pattern="[0-9]*" inputmode="numeric">` :
-                            `<span>${step.remainder}</span>`
+                            `<input type="text" 
+                                class="answer-input text-center text-xl" 
+                                style="width: ${remainderWidth}px; height: 3rem;" 
+                                data-step="${stepIndex}_remainder" 
+                                data-expected="${step.remainder}"
+                                placeholder="?" 
+                                pattern="[0-9]*" 
+                                inputmode="numeric">` :
+                            `<span class="text-lg">${step.remainder}</span>`
                         }
                     </div>
                 </div>
@@ -741,30 +836,127 @@
             stepElement.innerHTML = stepContent;
             currentProblem.stepsContainer.appendChild(stepElement);
 
-            // Add input event listeners for immediate validation
             if (isActive) {
                 const inputs = stepElement.querySelectorAll('input');
                 inputs.forEach(input => {
-                    input.addEventListener('input', (e) => {
-                        // Only allow numbers
-                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    // Handle input event
+                    input.addEventListener('input', function(e) {
+                        // Remove any non-digit characters
+                        this.value = this.value.replace(/[^0-9]/g, '');
                         
-                        // Update user's answer
-                        if (!currentProblem.userAnswers[stepIndex]) {
-                            currentProblem.userAnswers[stepIndex] = {};
+                        // Update the user's answer in the current problem
+                        const [stepIdx, type] = this.dataset.step.split('_');
+                        if (!currentProblem.userAnswers[stepIdx]) {
+                            currentProblem.userAnswers[stepIdx] = {};
                         }
-                        const [_, type] = e.target.dataset.step.split('_');
-                        currentProblem.userAnswers[stepIndex][type] = e.target.value;
+                        currentProblem.userAnswers[stepIdx][type] = this.value;
                         
-                        console.log('Input updated:', {
-                            stepIndex,
-                            type,
-                            value: e.target.value,
-                            currentStep: step,
-                            userAnswers: currentProblem.userAnswers[stepIndex]
-                        });
+                        // Check if all inputs in this step are filled
+                        const stepInputs = stepElement.querySelectorAll('input');
+                        const allFilled = Array.from(stepInputs).every(input => input.value.length > 0);
+                        
+                        if (allFilled) {
+                            // Validate the step
+                            const isCorrect = validateDivisionStep(parseInt(stepIdx));
+                            
+                            if (isCorrect) {
+                                // Mark inputs as correct
+                                stepInputs.forEach(input => {
+                                    input.classList.add('correct-digit');
+                                    input.readOnly = true;
+                                    setTimeout(() => input.classList.remove('correct-digit'), 1000);
+                                });
+                                
+                                // Move to next step if available
+                                if (parseInt(stepIdx) < currentProblem.steps.length - 1) {
+                                    // Remove any existing next steps
+                                    const nextSteps = currentProblem.stepsContainer.querySelectorAll(`[data-step-index="${parseInt(stepIdx) + 1}"]`);
+                                    nextSteps.forEach(step => step.remove());
+                                    
+                                    // Show next step
+                                    showDivisionStep(parseInt(stepIdx) + 1, true);
+                                    
+                                    // Focus the first input of the next step
+                                    const nextInput = currentProblem.stepsContainer.querySelector(`input[data-step="${parseInt(stepIdx) + 1}_times"]`);
+                                    if (nextInput) {
+                                        nextInput.focus();
+                                    }
+                                } else {
+                                    // Check if final answer inputs already exist
+                                    const existingFinalAnswer = currentProblem.stepsContainer.querySelector('.final-answer');
+                                    if (!existingFinalAnswer) {
+                                        showFinalAnswerInputs();
+                                    }
+                                }
+                            } else {
+                                // Mark inputs as incorrect
+                                stepInputs.forEach(input => {
+                                    input.classList.add('incorrect-digit');
+                                    setTimeout(() => {
+                                        input.classList.remove('incorrect-digit');
+                                        if (!input.readOnly) {
+                                            input.value = '';
+                                        }
+                                    }, 1000);
+                                });
+                            }
+                        }
+                    });
+
+                    // Handle keydown event
+                    input.addEventListener('keydown', function(e) {
+                        // Allow navigation and control keys
+                        if ([8, 46, 9, 27, 13, 35, 36, 37, 38, 39, 40].includes(e.keyCode) || 
+                            (e.ctrlKey && [65, 67, 86, 88].includes(e.keyCode))) {
+                            return;
+                        }
+                        
+                        // Only allow numeric input
+                        if (!/^[0-9]$/.test(e.key) && !e.ctrlKey) {
+                            e.preventDefault();
+                        }
                     });
                 });
+            }
+        }
+
+        function showFinalAnswerInputs() {
+            // Remove any existing final answer inputs first
+            const existingFinalAnswer = currentProblem.stepsContainer.querySelector('.final-answer');
+            if (existingFinalAnswer) {
+                existingFinalAnswer.remove();
+            }
+
+            const finalAnswerContent = `
+                <div class="flex items-center justify-center gap-4 mt-6 text-2xl final-answer">
+                    <span class="problem-digit">=</span>
+                    <input type="text" 
+                        class="answer-input text-center text-xl" 
+                        style="width: 120px; height: 3rem;" 
+                        data-group="quotient" 
+                        data-expected="${currentProblem.quotient}"
+                        placeholder="Thương" 
+                        pattern="[0-9]*" 
+                        inputmode="numeric">
+                    <span class="problem-digit text-xl">dư</span>
+                    <input type="text" 
+                        class="answer-input text-center text-xl" 
+                        style="width: 100px; height: 3rem;" 
+                        data-group="remainder" 
+                        data-expected="${currentProblem.remainder}"
+                        placeholder="Số dư" 
+                        pattern="[0-9]*" 
+                        inputmode="numeric">
+                </div>
+            `;
+            const finalContainer = document.createElement('div');
+            finalContainer.innerHTML = finalAnswerContent;
+            currentProblem.stepsContainer.appendChild(finalContainer.firstElementChild);
+            
+            // Focus the quotient input
+            const quotientInput = currentProblem.stepsContainer.querySelector('input[data-group="quotient"]');
+            if (quotientInput) {
+                quotientInput.focus();
             }
         }
 
@@ -889,7 +1081,7 @@
                 if (allFilled) {
                     console.log('All inputs filled for step:', stepIndex);
                     // Validate the step
-                    const isCorrect = validateDivisionStep(stepIndex);
+                    const isCorrect = validateDivisionStep(parseInt(stepIndex));
                     console.log('Step validation result:', isCorrect);
                     
                     if (isCorrect) {
@@ -901,7 +1093,7 @@
                         });
 
                         // Move to next step if available
-                        if (stepIndex < currentProblem.steps.length - 1) {
+                        if (parseInt(stepIndex) < currentProblem.steps.length - 1) {
                             // Remove any existing next steps
                             const nextSteps = currentProblem.stepsContainer.querySelectorAll(`[data-step-index="${parseInt(stepIndex) + 1}"]`);
                             nextSteps.forEach(step => step.remove());
@@ -916,23 +1108,7 @@
                             }
                         } else {
                             // All steps completed, show final answer input
-                            const finalAnswerContent = `
-                                <div class="flex items-center justify-center gap-4 mt-4 text-2xl">
-                                    <span class="problem-digit">=</span>
-                                    <input type="text" class="answer-input w-32" data-group="quotient" placeholder="Thương" pattern="[0-9]*" inputmode="numeric">
-                                    <span class="problem-digit text-xl">dư</span>
-                                    <input type="text" class="answer-input w-24" data-group="remainder" placeholder="Số dư" pattern="[0-9]*" inputmode="numeric">
-                                </div>
-                            `;
-                            const finalContainer = document.createElement('div');
-                            finalContainer.innerHTML = finalAnswerContent;
-                            currentProblem.stepsContainer.appendChild(finalContainer.firstElementChild);
-                            
-                            // Focus the quotient input
-                            const quotientInput = currentProblem.stepsContainer.querySelector('input[data-group="quotient"]');
-                            if (quotientInput) {
-                                quotientInput.focus();
-                            }
+                            showFinalAnswerInputs();
                         }
                     } else {
                         // Show error state
@@ -940,7 +1116,7 @@
                             input.classList.add('incorrect-digit');
                             setTimeout(() => {
                                 input.classList.remove('incorrect-digit');
-                                if (!input.readOnly) { // Only clear if not readonly
+                                if (!input.readOnly) {
                                     input.value = '';
                                 }
                             }, 1000);
